@@ -36,6 +36,7 @@ async def on_guild_join(server: discord.Guild):
     except TypeError:
         pass
 
+
 @client.slash_command(name="help", description="Get help and learn how to setup a notification.", default_permission=True)
 @commands.has_permissions(administrator=True)
 async def bot_help(inter: discord.ApplicationCommandInteraction):
@@ -65,8 +66,15 @@ async def create_notification_interface(inter: discord.ApplicationCommandInterac
     accept_button.callback = create_webhook
     cancel_button.callback = cancel_creation
 
+    class WebhookCreationView(discord.ui.View):
+        async def on_timeout(self) -> None:
+            message = self.message
+            view = discord.ui.View.from_message(message)
+            for item in view.children:
+                item.disabled = True
+            await message.edit(content="**THIS MENU TIMED OUT. PLEASE START AGAIN**", view=view)
 
-    control_view = discord.ui.View(timeout=300)
+    control_view = WebhookCreationView(timeout=300)
     for item in [chains_selection, channel_options, ping_option, accept_button, cancel_button]:
         control_view.add_item(item)
 
@@ -75,6 +83,7 @@ async def create_notification_interface(inter: discord.ApplicationCommandInterac
               "mentioned when the notifications are posted."
 
     await inter.send(content=message, view=control_view)
+    control_view.message = await inter.original_message()
 
 
 async def get_chain_options():
@@ -133,8 +142,11 @@ async def create_webhook(inter: discord.MessageInteraction):
 
     await webhook.send("test")
 
+
 async def cancel_creation(inter: discord.MessageInteraction):
-    pass
+    await inter.message.delete()
+
+
 
 async def chain_selection_callback(inter: discord.MessageInteraction):
     interface_messages_to_be_processed[inter.message.id].chain_selection_option = inter.values[0]
@@ -149,6 +161,7 @@ async def channel_selection_callback(inter: discord.MessageInteraction):
 async def ping_selection_callback(inter: discord.MessageInteraction):
     interface_messages_to_be_processed[inter.message.id].ping_options = inter.values
     await inter.response.defer()
+
 
 def start():
     client.run(os.getenv('TOKEN'))
