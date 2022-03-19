@@ -10,7 +10,6 @@ interfaces= {}
 failed_connections = []
 
 
-
 def connect_to_chain(chain):
     for url in chain.endpoints:
         try:
@@ -39,18 +38,17 @@ def referendum_watcher_subscription(events, _update_number, _subscription_id):
 
 
 def chain_watcher(chain):
-    while True:
-        # Make connection to interface
-        interface = None
-        while interface is None:
-            interface = connect_to_chain(chain)
+    # Make connection to interface
+    interface = None
+    while interface is None:
+        interface = connect_to_chain(chain)
 
+    while True:
         # Create Subscription for Interface
         new_referendum_index = interface.query(module='System',
                                                storage_function='Events',
                                                subscription_handler=referendum_watcher_subscription)
         notify_webhooks(chain, new_referendum_index)
-
 
 
 def create_chain_watchers(chains):

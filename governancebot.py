@@ -10,7 +10,7 @@ import sqlite3
 from dataclasses import dataclass, field
 from collections import defaultdict as dd
 from generate_emojis import generate_emojis_for_options
-from urllib import parse
+import chain_watchers
 
 logging.basicConfig(level=logging.WARNING)
 load_dotenv(verbose=True)
@@ -35,6 +35,7 @@ interface_messages_to_be_processed = dd(InterfaceMessage)
 async def on_ready():
     emoji_server = client.get_guild(int(os.getenv('emoji_server_id')))
     await generate_emojis_for_options(emoji_server)
+    await chain_watchers.create_chain_watchers(chains_library.chains)
 
 
 @client.event
