@@ -53,7 +53,7 @@ def chain_watcher(chain):
         asyncio.run(notify_webhooks(chain, new_referendum_index))
 
 
-def create_chain_watchers(chains):
+async def create_chain_watchers(chains):
     for chain in chains:
         watcher_thread = threading.Thread(target=chain_watcher, args=(chain,), daemon=True)
         watcher_thread.start()
