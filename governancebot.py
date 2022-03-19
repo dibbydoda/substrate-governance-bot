@@ -105,15 +105,17 @@ async def create_notification_interface(inter: discord.ApplicationCommandInterac
 @commands.has_guild_permissions(administrator=True)
 async def delete_notification(inter: discord.ApplicationCommandInteraction):
     webhook_options = await get_webhook_options(inter.guild)
+    if len(webhook_options) == 0:
+        await inter.send(content="There are no webhooks to delete.")
+        return
     max_options = 25 if len(webhook_options) > 25 else len(webhook_options)
     webhook_selection = discord.ui.Select(placeholder='Notification', options=webhook_options, max_values=max_options)
     webhook_selection.callback = delete_webhooks
-    if len(webhook_options) == 0:
-        webhook_selection.disabled = True
-    view = WebhookInteractionView(timeout=300)
+    view = WebhookInteractionView(timeout=5)
     view.add_item(webhook_selection)
     print("here1")
     await inter.send(content="Select the webhooks to delete. You may select multiple", view=view)
+    view.message = await inter.original_message()
 
 
 async def get_chain_options():
@@ -156,6 +158,9 @@ async def get_webhook_options(server: discord.Guild):
 async def create_webhook(inter: discord.MessageInteraction):
     server = inter.guild
     entered_values = interface_messages_to_be_processed[inter.message.id]
+    if entered_values.channel_option is None or entered_values.chain_selection_option is None:
+        await inter.send("Both a chain and channel must be selected. Please try again.")
+        return
     chain = chains_library.get_chain(entered_values.chain_selection_option)
     channel = server.get_channel(int(entered_values.channel_option))
     pings = ','.join(entered_values.ping_options)
@@ -229,7 +234,6 @@ async def channel_selection_callback(inter: discord.MessageInteraction):
 async def ping_selection_callback(inter: discord.MessageInteraction):
     interface_messages_to_be_processed[inter.message.id].ping_options = inter.values
     await inter.response.defer()
-
 
 
 def start():
