@@ -94,6 +94,7 @@ def notify_webhooks(chain, referendum_index):
 
             await webhook.send(content=message, embeds=[subscan_embed, js_embed])
 
+        db.close()
 
 
 
