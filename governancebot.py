@@ -126,7 +126,7 @@ async def create_webhook(inter: discord.MessageInteraction):
     entered_values = interface_messages_to_be_processed[inter.message.id]
     chain = chains_library.get_chain(entered_values.chain_selection_option)
     channel = server.get_channel(int(entered_values.channel_option))
-    pings = [server.get_role(int(role)) for role in entered_values.ping_options]
+    pings = ','.join(entered_values.ping_options)
 
     with open(f".//chain_logos//{chain.logo_file}", "rb") as fp:
         image= fp.read()
@@ -144,8 +144,10 @@ async def create_webhook(inter: discord.MessageInteraction):
         c.execute('''CREATE TABLE IF NOT EXISTS webhooks
             (chain STRING, id INTEGER PRIMARY KEY, guild_id INTEGER, token STRING, url STRING, pings STRING)''')
 
-        c.execute('''INSERT INTO webhooks (chain, id, guild_id, token, url)
-             VALUES (?, ?, ?, ?, ?)''', (chain.name, webhook.id, webhook.guild_id, webhook.token, webhook.url))
+        c.execute('''INSERT INTO webhooks (chain, id, guild_id, token, url, pings)
+             VALUES (?, ?, ?, ?, ?, ?)''', (chain.name, webhook.id,
+                                         webhook.guild_id, webhook.token,
+                                         webhook.url, pings))
 
         db.commit()
         await inter.send("Webhook has been successfully created.")
