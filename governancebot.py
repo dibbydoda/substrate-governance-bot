@@ -9,6 +9,8 @@ import chains_library
 import sqlite3
 from dataclasses import dataclass, field
 from collections import defaultdict as dd
+from generate_emojis import generate_emojis_for_options
+from urllib import parse
 
 logging.basicConfig(level=logging.WARNING)
 load_dotenv(verbose=True)
@@ -16,8 +18,8 @@ load_dotenv(verbose=True)
 intents = discord.Intents.none()
 intents.guilds = True
 
-
 client = commands.Bot(intents=intents, test_guilds=[int(os.getenv('test_server_id'))])
+
 
 @dataclass
 class InterfaceMessage:
@@ -30,9 +32,16 @@ interface_messages_to_be_processed = dd(InterfaceMessage)
 
 
 @client.event
+async def on_ready():
+    emoji_server = client.get_guild(int(os.getenv('emoji_server_id')))
+    await generate_emojis_for_options(emoji_server)
+
+
+@client.event
 async def on_guild_join(server: discord.Guild):
     try:
-        await server.system_channel.send("Thanks for inviting me to your server. To get started, have an administrator use /help")
+        await server.system_channel.send("Thanks for inviting me to your server. To get started, "
+                                         "have an administrator use /help")
     except TypeError:
         pass
 
@@ -40,6 +49,7 @@ async def on_guild_join(server: discord.Guild):
 @client.slash_command(name="help", description="Get help and learn how to setup a notification.", default_permission=True)
 @commands.has_permissions(administrator=True)
 async def bot_help(inter: discord.ApplicationCommandInteraction):
+    chain = chains_library.Polkadot
     await inter.send("This bot works by creating webhooks for each chain that a notification is required for. "
                      "To create a notification use /create_notification and follow the prompts."
                      "Note that as these webhooks are application managed, "
@@ -89,7 +99,7 @@ async def create_notification_interface(inter: discord.ApplicationCommandInterac
 async def get_chain_options():
     options = []
     for chain in chains_library.chains:
-        options.append(discord.SelectOption(label=chain.name, value=chain.name))
+        options.append(discord.SelectOption(label=chain.name, value=chain.name, emoji=chain.emoji))
     return options
 
 
@@ -128,7 +138,7 @@ async def create_webhook(inter: discord.MessageInteraction):
     try:
         c = db.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS webhooks
-            (chain STRING, id INTEGER PRIMARY KEY, guild_id INTEGER, token STRING, url STRING, last_referendum INTEGER)''')
+            (chain STRING, id INTEGER PRIMARY KEY, guild_id INTEGER, token STRING, url STRING)''')
 
         c.execute('''INSERT INTO webhooks (chain, id, guild_id, token, url)
              VALUES (?, ?, ?, ?, ?)''', (chain.name, webhook.id, webhook.guild_id, webhook.token, webhook.url))
@@ -139,13 +149,12 @@ async def create_webhook(inter: discord.MessageInteraction):
         await inter.send("The webhook creation failed.")
     finally:
         db.close
-
+    interface_messages_to_be_processed.pop(inter.message.id)
     await webhook.send("test")
 
 
 async def cancel_creation(inter: discord.MessageInteraction):
     await inter.message.delete()
-
 
 
 async def chain_selection_callback(inter: discord.MessageInteraction):
