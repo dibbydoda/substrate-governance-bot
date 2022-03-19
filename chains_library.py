@@ -1,5 +1,4 @@
 # This module contains information for each chain as dataclass.
-
 from dataclasses import dataclass
 from disnake import Emoji
 

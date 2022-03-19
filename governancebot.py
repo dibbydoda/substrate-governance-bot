@@ -1,16 +1,16 @@
+import logging
 import os
+import sqlite3
+from collections import defaultdict as dd
+from dataclasses import dataclass, field
 
 import disnake as discord
 from disnake.ext import commands
-import logging
 from dotenv import load_dotenv
-import asyncio
-import chains_library
-import sqlite3
-from dataclasses import dataclass, field
-from collections import defaultdict as dd
-from generate_emojis import generate_emojis_for_options
+
 import chain_watchers
+import chains_library
+from generate_emojis import generate_emojis_for_options
 
 logging.basicConfig(level=logging.WARNING)
 load_dotenv(verbose=True)
