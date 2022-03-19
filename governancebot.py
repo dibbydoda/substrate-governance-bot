@@ -31,6 +31,15 @@ class InterfaceMessage:
 interface_messages_to_be_processed = dd(InterfaceMessage)
 
 
+class WebhookInteractionView(discord.ui.View):
+    async def on_timeout(self) -> None:
+        message = self.message
+        view = discord.ui.View.from_message(message)
+        for item in view.children:
+            item.disabled = True
+        await message.edit(content="**THIS MENU TIMED OUT. PLEASE START AGAIN**", view=view)
+
+
 @client.event
 async def on_ready():
     emoji_server = client.get_guild(int(os.getenv('emoji_server_id')))
@@ -80,15 +89,7 @@ async def create_notification_interface(inter: discord.ApplicationCommandInterac
     accept_button.callback = create_webhook
     cancel_button.callback = cancel_creation
 
-    class WebhookCreationView(discord.ui.View):
-        async def on_timeout(self) -> None:
-            message = self.message
-            view = discord.ui.View.from_message(message)
-            for item in view.children:
-                item.disabled = True
-            await message.edit(content="**THIS MENU TIMED OUT. PLEASE START AGAIN**", view=view)
-
-    control_view = WebhookCreationView(timeout=300)
+    control_view = WebhookInteractionView(timeout=300)
     for item in [chains_selection, channel_options, ping_option, accept_button, cancel_button]:
         control_view.add_item(item)
 
@@ -109,8 +110,10 @@ async def delete_notification(inter: discord.ApplicationCommandInteraction):
     webhook_selection.callback = delete_webhooks
     if len(webhook_options) == 0:
         webhook_selection.disabled = True
+    view = WebhookInteractionView(timeout=300)
+    view.add_item(webhook_selection)
     print("here1")
-    await inter.send(content="Select the webhooks to delete", components=[webhook_selection])
+    await inter.send(content="Select the webhooks to delete. You may select multiple", view=view)
 
 
 async def get_chain_options():
@@ -190,9 +193,10 @@ async def create_webhook(inter: discord.MessageInteraction):
 
 
 async def delete_webhooks(inter: discord.MessageInteraction):
-    print('here 2')
-    selected_webhooks = inter.values
+    selected_webhooks = [int(webhook_id) for webhook_id in inter.values]
+    print(selected_webhooks)
     for webhook in await inter.guild.webhooks():
+        print(webhook)
         if webhook.id in selected_webhooks:
             try:
                 db = sqlite3.connect("webhooks.db")
