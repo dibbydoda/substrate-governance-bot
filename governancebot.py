@@ -62,10 +62,13 @@ async def bot_help(inter: discord.ApplicationCommandInteraction):
 async def create_notification_interface(inter: discord.ApplicationCommandInteraction):
     chains_selection = discord.ui.Select(placeholder='Chain', options= await get_chain_options())
     channel_options = discord.ui.Select(placeholder='Channel to notify', options= await get_channel_options(inter.guild))
+
+    ping_options = await get_role_options(inter.guild,)
+    max_pings = 5 if len(ping_options) > 5 else len(ping_options)
     ping_option = discord.ui.Select(placeholder='OPTIONAL: Select a role to ping in notifications',
-                                    options= await get_role_options(inter.guild,),
+                                    options=ping_options,
                                     min_values=0,
-                                    max_values=1)
+                                    max_values=max_pings)
 
     chains_selection.callback = chain_selection_callback
     channel_options.callback = channel_selection_callback
@@ -139,7 +142,7 @@ async def create_webhook(inter: discord.MessageInteraction):
     try:
         c = db.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS webhooks
-            (chain STRING, id INTEGER PRIMARY KEY, guild_id INTEGER, token STRING, url STRING)''')
+            (chain STRING, id INTEGER PRIMARY KEY, guild_id INTEGER, token STRING, url STRING, pings STRING)''')
 
         c.execute('''INSERT INTO webhooks (chain, id, guild_id, token, url)
              VALUES (?, ?, ?, ?, ?)''', (chain.name, webhook.id, webhook.guild_id, webhook.token, webhook.url))
