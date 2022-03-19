@@ -44,7 +44,7 @@ class WebhookInteractionView(discord.ui.View):
 async def on_ready():
     emoji_server = client.get_guild(int(os.getenv('emoji_server_id')))
     await generate_emojis_for_options(emoji_server)
-    #await chain_watchers.create_chain_watchers(chains_library.chains)
+    await chain_watchers.create_chain_watchers(chains_library.chains)
 
 
 @client.event
@@ -56,21 +56,24 @@ async def on_guild_join(server: discord.Guild):
         pass
 
 
-@client.slash_command(name="help", description="Get help and learn how to setup a notification.", default_permission=True)
+@client.slash_command(name="help",
+                      description="Get help and learn how to setup a notification.",
+                      default_permission=True)
 @commands.has_guild_permissions(administrator=True)
 async def bot_help(inter: discord.ApplicationCommandInteraction):
-    chain = chains_library.Polkadot
     await inter.send("This bot works by creating webhooks for each chain that a notification is required for. "
                      "To create a notification use /create_notification and follow the prompts."
                      "Note that as these webhooks are application managed, "
                      "they will not appear in your server integration menu.", ephemeral=True)
 
 
-@client.slash_command(name="create_notification", description="Get help and learn how to setup a notification.", default_permission=True)
+@client.slash_command(name="create_notification",
+                      description="Get help and learn how to setup a notification.",
+                      default_permission=True)
 @commands.has_guild_permissions(administrator=True)
 async def create_notification_interface(inter: discord.ApplicationCommandInteraction):
-    chains_selection = discord.ui.Select(placeholder='Chain', options= await get_chain_options())
-    channel_options = discord.ui.Select(placeholder='Channel to notify', options= await get_channel_options(inter.guild))
+    chains_selection = discord.ui.Select(placeholder='Chain', options=await get_chain_options())
+    channel_options = discord.ui.Select(placeholder='Channel to notify', options=await get_channel_options(inter.guild))
 
     ping_options = await get_role_options(inter.guild,)
     max_pings = 5 if len(ping_options) > 5 else len(ping_options)
@@ -101,7 +104,9 @@ async def create_notification_interface(inter: discord.ApplicationCommandInterac
     control_view.message = await inter.original_message()
 
 
-@client.slash_command(name="delete_notifications", description="Delete a previously made notification", default_permission=True)
+@client.slash_command(name="delete_notifications",
+                      description="Delete a previously made notification",
+                      default_permission=True)
 @commands.has_guild_permissions(administrator=True)
 async def delete_notification(inter: discord.ApplicationCommandInteraction):
     webhook_options = await get_webhook_options(inter.guild)
@@ -149,9 +154,9 @@ async def get_webhook_options(server: discord.Guild):
         row = c.fetchone()
         chain = chains_library.get_chain(row[0])
         options.append(discord.SelectOption(label=f"{webhook.name} in #{webhook.channel.name}.",
-                                            value=webhook.id,
+                                            value=str(webhook.id),
                                             emoji=chain.emoji))
-        db.close
+        db.close()
     return options
 
 
@@ -166,7 +171,7 @@ async def create_webhook(inter: discord.MessageInteraction):
     pings = ','.join(entered_values.ping_options)
 
     with open(f".//chain_logos//{chain.logo_file}", "rb") as fp:
-        image= fp.read()
+        image = fp.read()
 
     try:
         webhook = await channel.create_webhook(name=f"{chain.name} Governance Notify", avatar=image)
@@ -183,16 +188,16 @@ async def create_webhook(inter: discord.MessageInteraction):
 
         c.execute('''INSERT INTO webhooks (chain, id, guild_id, token, url, pings)
              VALUES (?, ?, ?, ?, ?, ?)''', (chain.name, webhook.id,
-                                         webhook.guild_id, webhook.token,
-                                         webhook.url, pings))
+                                            webhook.guild_id, webhook.token,
+                                            webhook.url, pings))
 
         db.commit()
         await inter.send("Webhook has been successfully created.")
-    except:
+    except sqlite3.DatabaseError:
         await inter.send("The webhook creation failed.")
         raise
     finally:
-        db.close
+        db.close()
     interface_messages_to_be_processed.pop(inter.message.id)
     await webhook.send("test")
 
@@ -242,6 +247,3 @@ def start():
 
 if __name__ == '__main__':
     start()
-
-
-
