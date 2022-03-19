@@ -153,6 +153,7 @@ async def create_webhook(inter: discord.MessageInteraction):
         await inter.send("Webhook has been successfully created.")
     except:
         await inter.send("The webhook creation failed.")
+        raise
     finally:
         db.close
     interface_messages_to_be_processed.pop(inter.message.id)

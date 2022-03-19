@@ -1,3 +1,4 @@
+import asyncio
 from substrateinterface import SubstrateInterface
 import chains_library
 import threading
@@ -48,16 +49,16 @@ def chain_watcher(chain):
         new_referendum_index = interface.query(module='System',
                                                storage_function='Events',
                                                subscription_handler=referendum_watcher_subscription)
-        notify_webhooks(chain, new_referendum_index)
+        asyncio.run(notify_webhooks(chain, new_referendum_index))
 
 
 def create_chain_watchers(chains):
     for chain in chains:
-        watcher_thread = threading.Thread(target=chain_watcher, args=chain, daemon=True)
+        watcher_thread = threading.Thread(target=chain_watcher, args=(chain,), daemon=True)
         watcher_thread.start()
 
 
-def notify_webhooks(chain, referendum_index):
+async def notify_webhooks(chain, referendum_index):
     bot = governancebot.client
     db = sqlite3.connect('webhooks.db')
     c = db.cursor()

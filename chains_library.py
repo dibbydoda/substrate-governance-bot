@@ -22,7 +22,9 @@ Polkadot = SubstrateChain(name="Polkadot",
 
 Kusama = SubstrateChain(name="Kusama",
                         is_relay=True,
-                        endpoints=(),
+                        endpoints=("wss://kusama-rpc.polkadot.io",
+                                   "wss://kusama.api.onfinality.io/public-ws",
+                                   "wss://kusama-rpc.dwellir.com"),
                         logo_file="kusama-128.png")
 
 chains = (Polkadot, Kusama)
