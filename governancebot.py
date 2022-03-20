@@ -68,7 +68,7 @@ async def bot_help(inter: discord.ApplicationCommandInteraction):
 
 
 @client.slash_command(name="create_notification",
-                      description="Get help and learn how to setup a notification.",
+                      description="Create a notification for a chain's referendums.",
                       default_permission=True)
 @commands.has_guild_permissions(administrator=True)
 async def create_notification_interface(inter: discord.ApplicationCommandInteraction):
@@ -105,7 +105,7 @@ async def create_notification_interface(inter: discord.ApplicationCommandInterac
 
 
 @client.slash_command(name="delete_notifications",
-                      description="Delete a previously made notification",
+                      description="Delete a previously made notification.",
                       default_permission=True)
 @commands.has_guild_permissions(administrator=True)
 async def delete_notification(inter: discord.ApplicationCommandInteraction):
