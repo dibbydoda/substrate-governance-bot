@@ -69,9 +69,8 @@ async def on_guild_join(server: discord.Guild):
 @commands.has_guild_permissions(administrator=True)
 async def bot_help(inter: discord.ApplicationCommandInteraction):
     await inter.send("This bot works by creating webhooks for each chain that a notification is required for. "
-                     "To create a notification use /create_notification and follow the prompts."
-                     "Note that as these webhooks are application managed, "
-                     "they will not appear in your server integration menu.", ephemeral=True)
+                     "\nTo create a notification use **/create_notification** and follow the prompts."
+                     "\n To delete previously made notifications, use **/delete_notifications**.", ephemeral=True)
 
 
 @client.slash_command(name="create_notification",

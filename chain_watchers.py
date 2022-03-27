@@ -71,7 +71,7 @@ async def notify_webhooks(chain, referendum_index, bot):
         subscan_embed = discord.Embed(title="Subscan Referendum Info",
                                       type="link",
                                       url=f"https://{chain.name}.subscan.io/referenda/{referendum_index}",
-                                      description="Click here to get more info on the voting on subscan.",
+                                      description="Click here to get more information on the referendum on Subscan.",
                                       colour=discord.Colour.purple())
         subscan_embed.set_image(url="https://miro.medium.com/max/1400/1*y-ihVke24XjJ4-sWS-5uyQ.png")
 
@@ -96,16 +96,13 @@ async def notify_webhooks(chain, referendum_index, bot):
             ping_string: str = str(webhook_data['pings'])
             message = ''
             if not ping_string == '':
-                print(bot.get_guild(webhook_data['guild_id']))
-                print(bot.guilds)
                 mentions = [(bot.get_guild(webhook_data['guild_id'])).get_role(int(role_id)).mention for
                             role_id in ping_string.split(',')]
                 message += ' ,'.join(mentions)
                 message += "\n"
-            message += (f"Referendum number {referendum_index} is now up for vote on {chain.name} "
+            message += (f"Referendum number {referendum_index} is now up for vote on {chain.name}."
                         f"\nFor more information visit the referendum page Subscan."
                         f"\nVote on polkadot.js")
-            print(partial_webhook.is_partial(), partial_webhook.is_authenticated())
             await partial_webhook.send(content=message, embeds=[subscan_embed, js_embed])
 
         db.close()
