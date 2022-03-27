@@ -5,6 +5,7 @@ import threading
 import aiohttp
 import disnake as discord
 from substrateinterface import SubstrateInterface
+from collections import namedtuple
 
 import governancebot
 
@@ -12,8 +13,8 @@ interfaces = {}
 failed_connections = []
 
 
-def connect_to_chain(chain):
-    for url in chain.endpoints:
+def connect_to_chain(chain: namedtuple):
+    for url in chain.properties["endpoints"]:
         try:
             print(f"Trying {url}")
             interface = SubstrateInterface(url=url)
@@ -54,7 +55,8 @@ def chain_watcher(chain, bot):
 
 
 async def create_chain_watchers(chains, bot):
-    for chain in chains:
+    for chain_tuple in chains.items():
+        chain = governancebot.Chain._make(chain_tuple)
         watcher_thread = threading.Thread(target=chain_watcher, args=(chain, bot), daemon=True)
         watcher_thread.start()
 
@@ -91,7 +93,7 @@ async def notify_webhooks(chain, referendum_index, bot):
                 # The webhook has been manually deleted.
                 await remove_deleted_webhook(webhook_data['id'])
                 continue
-            ping_string: str = webhook_data['pings']
+            ping_string: str = str(webhook_data['pings'])
             message = ''
             if not ping_string == '':
                 print(bot.get_guild(webhook_data['guild_id']))
@@ -100,8 +102,8 @@ async def notify_webhooks(chain, referendum_index, bot):
                             role_id in ping_string.split(',')]
                 message += ' ,'.join(mentions)
                 message += "\n"
-            message += (f"A new referendum is up for vote on {chain.name} "
-                        f"\nFor more information visit Subscan."
+            message += (f"Referendum number {referendum_index} is now up for vote on {chain.name} "
+                        f"\nFor more information visit the referendum page Subscan."
                         f"\nVote on polkadot.js")
             print(partial_webhook.is_partial(), partial_webhook.is_authenticated())
             await partial_webhook.send(content=message, embeds=[subscan_embed, js_embed])

@@ -1,0 +1,29 @@
+{
+  "Polkadot": {
+    "is_relay": true,
+    "endpoints": [
+      "wss://rpc.polkadot.io",
+      "wss://polkadot.api.onfinality.io/public-ws",
+      "wss://polkadot-rpc.dwellir.com"
+    ],
+    "logo_file": "polkadot-circle.png"
+  },
+  "Kusama": {
+    "is_relay": true,
+    "endpoints": [
+      "wss://kusama-rpc.polkadot.io",
+      "wss://kusama.api.onfinality.io/public-ws",
+      "wss://kusama-rpc.dwellir.com"
+    ],
+    "logo_file": "kusama-128.png"
+  },
+  "Statemine": {
+    "is_relay": false,
+    "endpoints": [
+      "wss://statemine-rpc.polkadot.io",
+      "wss://statemine.api.onfinality.io/public-ws",
+      "wss://statemine-rpc.dwellir.com"
+    ],
+    "logo_file": "statemine.png"
+  }
+}

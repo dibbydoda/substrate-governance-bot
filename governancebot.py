@@ -1,7 +1,7 @@
 import logging
 import os
 import sqlite3
-from collections import defaultdict as dd
+from collections import namedtuple, defaultdict as dd
 from dataclasses import dataclass, field
 
 import disnake as discord
@@ -9,7 +9,9 @@ from disnake.ext import commands
 from dotenv import load_dotenv
 
 import chain_watchers
-import chains_library
+import json
+
+import generate_emojis
 from generate_emojis import generate_emojis_for_options
 
 logging.basicConfig(level=logging.WARNING)
@@ -29,6 +31,7 @@ class InterfaceMessage:
     ping_options: list = field(default_factory=list)
 
 
+Chain = namedtuple('Chain', 'name, properties')
 interface_messages_to_be_processed = dd(InterfaceMessage)
 
 
@@ -44,8 +47,11 @@ class WebhookInteractionView(discord.ui.View):
 @client.event
 async def on_ready():
     emoji_server = client.get_guild(int(os.getenv('emoji_server_id')))
-    await generate_emojis_for_options(emoji_server)
-    await chain_watchers.create_chain_watchers(chains_library.chains, client)
+    with open("chains_library.json", "rb") as chains_file:
+        global chains
+        chains = json.load(chains_file)
+    await generate_emojis_for_options(emoji_server, chains)
+    await chain_watchers.create_chain_watchers(chains, client)
 
 
 @client.event
@@ -66,7 +72,6 @@ async def bot_help(inter: discord.ApplicationCommandInteraction):
                      "To create a notification use /create_notification and follow the prompts."
                      "Note that as these webhooks are application managed, "
                      "they will not appear in your server integration menu.", ephemeral=True)
-    await chain_watchers.notify_webhooks(chain=chains_library.get_chain("Polkadot"), referendum_index=55, bot=client)
 
 
 @client.slash_command(name="create_notification",
@@ -118,7 +123,7 @@ async def delete_notification(inter: discord.ApplicationCommandInteraction):
     max_options = 25 if len(webhook_options) > 25 else len(webhook_options)
     webhook_selection = discord.ui.Select(placeholder='Notification', options=webhook_options, max_values=max_options)
     webhook_selection.callback = delete_webhooks
-    view = WebhookInteractionView(timeout=5)
+    view = WebhookInteractionView(timeout=300)
     view.add_item(webhook_selection)
     await inter.send(content="Select the webhooks to delete. You may select multiple", view=view)
     view.message = await inter.original_message()
@@ -126,8 +131,8 @@ async def delete_notification(inter: discord.ApplicationCommandInteraction):
 
 async def get_chain_options():
     options = []
-    for chain in chains_library.chains:
-        options.append(discord.SelectOption(label=chain.name, value=chain.name, emoji=chain.emoji))
+    for chain in chains:
+        options.append(discord.SelectOption(label=chain, value=chain, emoji=generate_emojis.emojis[chain]))
     return options
 
 
@@ -153,11 +158,11 @@ async def get_webhook_options(server: discord.Guild):
     for webhook in bot_webhooks:
         c.execute('''SELECT chain FROM webhooks WHERE id = ?''', (webhook.id,))
         row = c.fetchone()
-        chain = chains_library.get_chain(row[0])
+        chain = row[0]
         options.append(discord.SelectOption(label=f"{webhook.name} in #{webhook.channel.name}.",
                                             value=str(webhook.id),
-                                            emoji=chain.emoji))
-        db.close()
+                                            emoji=generate_emojis.emojis[chain]))
+    db.close()
     return options
 
 
@@ -167,15 +172,16 @@ async def create_webhook(inter: discord.MessageInteraction):
     if entered_values.channel_option is None or entered_values.chain_selection_option is None:
         await inter.send("Both a chain and channel must be selected. Please try again.")
         return
-    chain = chains_library.get_chain(entered_values.chain_selection_option)
+    chain_name = entered_values.chain_selection_option
+    chain = chains[chain_name]
     channel = server.get_channel(int(entered_values.channel_option))
     pings = ','.join(entered_values.ping_options)
 
-    with open(f".//chain_logos//{chain.logo_file}", "rb") as fp:
+    with open(f".//chain_logos//{chain['logo_file']}", "rb") as fp:
         image = fp.read()
 
     try:
-        webhook = await channel.create_webhook(name=f"{chain.name} Governance Notify", avatar=image)
+        webhook = await channel.create_webhook(name=f"{chain_name} Governance Notify", avatar=image)
     except discord.Forbidden:
         await inter.send("The webhook could not be created due to invalid bot permissions.")
         return
@@ -188,7 +194,7 @@ async def create_webhook(inter: discord.MessageInteraction):
             (chain STRING, id INTEGER PRIMARY KEY, guild_id INTEGER, token STRING, url STRING, pings STRING)''')
 
         c.execute('''INSERT INTO webhooks (chain, id, guild_id, token, url, pings)
-             VALUES (?, ?, ?, ?, ?, ?)''', (chain.name, webhook.id,
+             VALUES (?, ?, ?, ?, ?, ?)''', (chain_name, webhook.id,
                                             webhook.guild_id, webhook.token,
                                             webhook.url, pings))
 

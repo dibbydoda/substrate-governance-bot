@@ -1,15 +1,19 @@
-import chains_library
 import disnake as discord
+import governancebot
+
+emojis = {}
 
 
-async def generate_emojis_for_options(emoji_server: discord.Guild):
+async def generate_emojis_for_options(emoji_server: discord.Guild, chains):
     print("Starting to process emojis")
     for emoji in emoji_server.emojis:
         await emoji.delete()
 
-    for chain in chains_library.chains:
-        with open(f".//chain_logos//{chain.logo_file}", "rb") as fp:
+    for chain_tuple in chains.items():
+        chain = governancebot.Chain._make(chain_tuple)
+        with open(f".//chain_logos//{chain.properties['logo_file']}", "rb") as fp:
             image = fp.read()
-        chain.emoji = await emoji_server.create_custom_emoji(name=chain.name, image=image)
+        emoji = await emoji_server.create_custom_emoji(name=chain.name, image=image)
+        emojis[chain.name] = emoji
 
     print("Finished processing emojis")
