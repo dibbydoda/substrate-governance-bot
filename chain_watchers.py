@@ -8,7 +8,7 @@ from substrateinterface import SubstrateInterface
 
 import governancebot
 
-interfaces= {}
+interfaces = {}
 failed_connections = []
 
 
@@ -39,7 +39,7 @@ def referendum_watcher_subscription(events, _update_number, _subscription_id):
             pass
 
 
-def chain_watcher(chain):
+def chain_watcher(chain, bot):
     # Make connection to interface
     interface = None
     while interface is None:
@@ -50,18 +50,18 @@ def chain_watcher(chain):
         new_referendum_index = interface.query(module='System',
                                                storage_function='Events',
                                                subscription_handler=referendum_watcher_subscription)
-        asyncio.run(notify_webhooks(chain, new_referendum_index))
+        asyncio.run(notify_webhooks(chain, new_referendum_index, bot))
 
 
-async def create_chain_watchers(chains):
+async def create_chain_watchers(chains, bot):
     for chain in chains:
-        watcher_thread = threading.Thread(target=chain_watcher, args=(chain,), daemon=True)
+        watcher_thread = threading.Thread(target=chain_watcher, args=(chain, bot), daemon=True)
         watcher_thread.start()
 
 
-async def notify_webhooks(chain, referendum_index):
-    bot = governancebot.client
+async def notify_webhooks(chain, referendum_index, bot):
     db = sqlite3.connect('webhooks.db')
+    db.row_factory = sqlite3.Row
     c = db.cursor()
     c.execute('''SELECT id, guild_id, token, url, pings FROM webhooks WHERE chain = ?''', (chain.name,))
     rows = c.fetchall()
@@ -82,25 +82,38 @@ async def notify_webhooks(chain, referendum_index):
         js_embed.set_image(url="https://polkadot.js.org/extension/logo.jpg")
 
         for webhook_data in rows:
-            webhook = discord.Webhook.from_url(url=webhook_data[3], session=session)
-            pings: str = webhook_data[4]
-            if pings is not None:
-                mentions = [bot.get_guild(webhook_data[1]).get_role(int(role_id)).mention for
-                            role_id in pings.split(',')]
-            message = ' ,'.join(mentions)
-            if pings is not None:
+            partial_webhook = discord.Webhook.from_url(url=webhook_data['url'],
+                                                       session=session,
+                                                       bot_token=governancebot.bot_token)
+            try:
+                await partial_webhook.fetch()
+            except discord.NotFound:
+                # The webhook has been manually deleted.
+                await remove_deleted_webhook(webhook_data['id'])
+                continue
+            ping_string: str = webhook_data['pings']
+            message = ''
+            if not ping_string == '':
+                print(bot.get_guild(webhook_data['guild_id']))
+                print(bot.guilds)
+                mentions = [(bot.get_guild(webhook_data['guild_id'])).get_role(int(role_id)).mention for
+                            role_id in ping_string.split(',')]
+                message += ' ,'.join(mentions)
                 message += "\n"
             message += (f"A new referendum is up for vote on {chain.name} "
-                       f"\nFor more information visit Subscan."
-                       f"Vote on polkadot.js")
-
-            await webhook.send(content=message, embeds=[subscan_embed, js_embed])
+                        f"\nFor more information visit Subscan."
+                        f"\nVote on polkadot.js")
+            print(partial_webhook.is_partial(), partial_webhook.is_authenticated())
+            await partial_webhook.send(content=message, embeds=[subscan_embed, js_embed])
 
         db.close()
 
 
-
-
-
-
-
+async def remove_deleted_webhook(webhook_id):
+    db = sqlite3.connect('webhooks.db')
+    c = db.cursor()
+    try:
+        c.execute('''DELETE FROM webhooks WHERE id = ?''', (webhook_id,))
+    except sqlite3.DatabaseError:
+        pass
+    db.commit()

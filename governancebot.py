@@ -19,6 +19,7 @@ intents = discord.Intents.none()
 intents.guilds = True
 
 client = commands.Bot(intents=intents, test_guilds=[int(os.getenv('test_server_id'))])
+bot_token = os.getenv('TOKEN')
 
 
 @dataclass
@@ -44,7 +45,7 @@ class WebhookInteractionView(discord.ui.View):
 async def on_ready():
     emoji_server = client.get_guild(int(os.getenv('emoji_server_id')))
     await generate_emojis_for_options(emoji_server)
-    await chain_watchers.create_chain_watchers(chains_library.chains)
+    await chain_watchers.create_chain_watchers(chains_library.chains, client)
 
 
 @client.event
@@ -65,6 +66,7 @@ async def bot_help(inter: discord.ApplicationCommandInteraction):
                      "To create a notification use /create_notification and follow the prompts."
                      "Note that as these webhooks are application managed, "
                      "they will not appear in your server integration menu.", ephemeral=True)
+    await chain_watchers.notify_webhooks(chain=chains_library.get_chain("Polkadot"), referendum_index=55, bot=client)
 
 
 @client.slash_command(name="create_notification",
@@ -118,7 +120,6 @@ async def delete_notification(inter: discord.ApplicationCommandInteraction):
     webhook_selection.callback = delete_webhooks
     view = WebhookInteractionView(timeout=5)
     view.add_item(webhook_selection)
-    print("here1")
     await inter.send(content="Select the webhooks to delete. You may select multiple", view=view)
     view.message = await inter.original_message()
 
@@ -204,9 +205,7 @@ async def create_webhook(inter: discord.MessageInteraction):
 
 async def delete_webhooks(inter: discord.MessageInteraction):
     selected_webhooks = [int(webhook_id) for webhook_id in inter.values]
-    print(selected_webhooks)
     for webhook in await inter.guild.webhooks():
-        print(webhook)
         if webhook.id in selected_webhooks:
             try:
                 db = sqlite3.connect("webhooks.db")
@@ -242,7 +241,7 @@ async def ping_selection_callback(inter: discord.MessageInteraction):
 
 
 def start():
-    client.run(os.getenv('TOKEN'))
+    client.run(bot_token)
 
 
 if __name__ == '__main__':

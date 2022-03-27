@@ -13,4 +13,3 @@ async def generate_emojis_for_options(emoji_server: discord.Guild):
         chain.emoji = await emoji_server.create_custom_emoji(name=chain.name, image=image)
 
     print("Finished processing emojis")
-
