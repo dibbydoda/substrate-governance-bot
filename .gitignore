@@ -1,3 +1,4 @@
 .env
 Test_Block_Reading.py
 webhooks.db
+.idea
